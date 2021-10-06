@@ -1,36 +1,42 @@
-const index = require('./index.js');
 const fsp = require('fs').promises;
 const fs = require('fs');
-const modulePath = require('path');
+const Path = require('path');
 const markdownLinkExtractor = require('markdown-link-extractor')
 
 /* rutas para probar: 
-dir  'C:\Users\asus\Documents\Laboratoria\BOG003-data-lovers\src\data'    ESTA NO SIRVE NO TRAE NADA
-      C:\Users\asus\Documents\Laboratoria\BOG003-md-links     ESTA SIRVE
-archivo  'C:\Users\asus\Documents\Laboratoria\BOG003-md-links\readme1.md' */
-
-/* Variable route que contiene el argumento pasado en la consola */
-let route = process.argv[2];
+dir  'C:\Users\asus\Documents\Laboratoria\BOG003-data-lovers\' --Al pasarle esta ruta se queda sin hacer nada
+                                                             pienso que por la cantidad de archivos que encuentra
+dir2    'C:\Users\asus\Documents\Laboratoria\BOG003-data-lovers\node_modules\@eslint'  FUNCIONA
+archivo  'C:\Users\asus\Documents\Laboratoria\BOG003-md-links\readme1.md' FUNCIONA */
 
 /* mdLinks contiene todas las funciones del flujo */
 const mdLinks = (path) => new Promise((resolve, reject) => {
+  let arr = [];
   if (path) {
     /* 2. Llamar función isAnDirectory() y pasarle como argumento la función isAbsolute */
     isAnDirectory(isAbsolute(path)).then((res) => {
       if (res === true) {
         /* Llamar promesa que resuelve el listado de rutas recursivamente */
-        resReadDirectory(path).then((object) => {
-          console.log(object);
-        })
+        arrFiles(path).then((files) => {
+
+          files.forEach((file) => {
+            // console.log(file) // HAY UN PROBLEMA CON ALGUNOS DIRECTORIOS QUE NO LEE BIEN
+            /* Por cada archivo se resuelve resReadFile que agregan los objetos que con sus propiedades al arreglo arr */
+            arr.push(resReadFile(file).then((object) => object).catch((error) => console.error('error en arry.push', error)))
+            // PONER ALGUNA CONDICIÓN PARA CUANDO NO ENCUENTRE NINGUN LINK DENTRO DEL README
+          })
+          /* Al resolverse todas las promesas anteriores se da resolve a la promesa que retorna objetos(uno por link)  */
+          resolve(Promise.all(arr).then((resolve) => resolve).catch((error) => console.error('error en resolve promise', error)))
+        }).catch((error) => console.error('error en res read', error))
         /* Si es de extensión .md se lee el archivo*/
       } else if (isMd(path)) {
         // ME FALTA HACER ALGO PARA CUANDO NO SEA UN ARCHIVO MD
         /* Resolver promesa de leer archivo para crear el objeto */
         resReadFile(path).then((object) => {
           resolve(object)
-        });
+        }).catch((error) => console.error('error en resReadFile mdlinks', error));
       }
-    })
+    }).catch((error) => console.error('error en is a directory', error))
 
   } else {
     reject(new Error('Error al retornar promesa'))
@@ -40,22 +46,21 @@ const mdLinks = (path) => new Promise((resolve, reject) => {
 /* Comprobar si recibe ruta absoluta o relativa */
 const isAbsolute = (path) => {
   // Si es absoluta retornar la ruta normal 
-  if (modulePath.isAbsolute(path) === true) {
+  if (Path.isAbsolute(path) === true) {
     return path;
   } else {
     // Convertir la ruta a absolta
-    let newPath = modulePath.resolve(__dirname, path);
+    let newPath = Path.resolve(__dirname, path);
     return newPath;
   }
 }
 
 /* Comprobar que la extensión del archivo sea .md */
-const isMd = (path) => modulePath.extname(path) === '.md' ? true : false;
+const isMd = (path) => Path.extname(path) === '.md' ? true : false;
 
 /* Comprobar si es un archivo o un directorio */
 const isAnDirectory = (path) => fsp.stat(path)
   .then((stats) => stats.isDirectory())
-
   .catch(error => {
     console.error('error dentro de isAnDirectory => ', error)
   });
@@ -83,17 +88,21 @@ const linksObject = (markdown, route) => {
 const readFile = (path) => fsp.readFile(path, { encoding: 'utf-8' })
 
 /* Se crea promesa que resuelve el array con el listado de objetos */
-const resReadFile = (path) => new Promise((resolve) => {
+const resReadFile = (path) => new Promise((resolve, reject) => {
   /* Se resuelve la promesa de leer el archivo */
   readFile(path).then((data) => {
-    resolve(linksObject(data, path))
+    if (data)
+      resolve(linksObject(data, path))
+    else {
+      reject(new Error('no hay datos al leer'))
+    }
   }).catch(error => console.log('error al leer archivo ', error))
 })
 
-/* Función de recursividad para leer todos los archivos */
+/* Función de recursividad para extraer todos los archivos md del directorio */
 const readRecursive = (dir, files) => {
   fs.readdirSync(dir).map(file => { // leer el directorio
-    const path = modulePath.join(dir, file); // obtener ruta de cada archivo
+    const path = Path.join(dir, file); // obtener ruta de cada archivo
     let directory = fs.statSync(path).isDirectory()
     if (directory) { // si es un directorio se vuelve a ejecutar la función
       readRecursive(path, files);
@@ -104,51 +113,17 @@ const readRecursive = (dir, files) => {
   return files;
 }
 
-/* Función con promesa que resuelve el listado de archivos .md dentro del arreglo files */
-const arrRecursive = (path) => new Promise((resolve) => {
+/* Función con promesa que llama readRecursive y resuelve el listado de archivos .md dentro del arreglo files */
+const arrFiles = (path) => new Promise((resolve, reject) => {
   let files = [];
   let listFiles = readRecursive(path, files);
-  resolve(listFiles)
+  if (files != []) {
+    resolve(listFiles)
+  }
+  else {
+    reject(new Error('no hay links'))
+  }
 });
 
-/* Se crea promesa que resuelve el array con el listado de objetos x archivo dentro del directorio */
-const resReadDirectory = (path) => new Promise((resolve) => {
-  arrRecursive(path).then((files) => {
-    files.forEach((file) => {
-      /* Por cada archivo se llama la función que resuelve un array de objetos*/
-      resReadFile(file).then((object) => {
-        // console.log(object);
-        // PONER ALGUNA CONDICIÓN PARA CUANDO NO ENCUENTRE NINGUN LINK DENTRO DEL README
-        resolve(object)
-      })
-    })
-  })
-})
-
-/* Pedir ayudantia para retornar lo que es porque aqui si me llama los objetos con el console pero cuando la llamo arriba 
-ya no me sirve, creo que es algo en el valor de retorno que estoy dandonle a resolve
-   */
-
-
-/*  CREACION DE UNA PROMESA
-const promise = new Promise((resolve, reject) => {
-   if (path) {
-     resolve(path)
-   } else {
-     reject(new Error('no hay ruta'))
-   }
- })
- 
-return promise
-LLAMAR LA PROMESA
-.then(path => console.log(path))
-.catch(error => console.error(error)); 
- */
-
-mdLinks(route).then((res) => {
-  console.log(res)
-  // isAnDirectory(isAbsolute(res)) // aqui me trae el objeto con los elementos del archivo ahora el problema es 
-  // en el caso de exportar esta función no habria algun problema de que las llame aqui?
-  // arriba el resolve no se si lo estoy haciendo bien (solo tiene path)
-}).catch(error => console.log('error promesa', error));
-
+/* exports: para que la función esté disponible para su importación en otro lugar */
+exports.mdLinks = mdLinks;
