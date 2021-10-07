@@ -10,7 +10,7 @@ dir2    'C:\Users\asus\Documents\Laboratoria\BOG003-data-lovers\node_modules\@es
 archivo  'C:\Users\asus\Documents\Laboratoria\BOG003-md-links\readme1.md' FUNCIONA */
 
 /* mdLinks contiene todas las funciones del flujo */
-const mdLinks = (path) => new Promise((resolve, reject) => {
+const mdLinks = (path, options) => new Promise((resolve, reject) => {
   let arr = [];
   if (path) {
     /* 2. Llamar función isAnDirectory() y pasarle como argumento la función isAbsolute */
@@ -18,15 +18,16 @@ const mdLinks = (path) => new Promise((resolve, reject) => {
       if (res === true) {
         /* Llamar promesa que resuelve el listado de rutas recursivamente */
         arrFiles(path).then((files) => {
-
+        isValidate(options)
           files.forEach((file) => {
-            // console.log(file) // HAY UN PROBLEMA CON ALGUNOS DIRECTORIOS QUE NO LEE BIEN
             /* Por cada archivo se resuelve resReadFile que agregan los objetos que con sus propiedades al arreglo arr */
             arr.push(resReadFile(file).then((object) => object).catch((error) => console.error('error en arry.push', error)))
             // PONER ALGUNA CONDICIÓN PARA CUANDO NO ENCUENTRE NINGUN LINK DENTRO DEL README
           })
           /* Al resolverse todas las promesas anteriores se da resolve a la promesa que retorna objetos(uno por link)  */
           resolve(Promise.all(arr).then((resolve) => resolve).catch((error) => console.error('error en resolve promise', error)))
+          
+          
         }).catch((error) => console.error('error en res read', error))
         /* Si es de extensión .md se lee el archivo*/
       } else if (isMd(path)) {
@@ -35,6 +36,8 @@ const mdLinks = (path) => new Promise((resolve, reject) => {
         resReadFile(path).then((object) => {
           resolve(object)
         }).catch((error) => console.error('error en resReadFile mdlinks', error));
+      } else {
+        console.error('no hay archivos .md')
       }
     }).catch((error) => console.error('error en is a directory', error))
 
