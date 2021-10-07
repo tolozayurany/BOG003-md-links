@@ -5,5 +5,7 @@
     "markdown-extract-links": "^1.0.1",
     "markdown-link-extractor": "^1.3.0"
   },
-  "bin": "./index.js"
+  "bin": {
+    "mdLinks": "./index.js"
+  }
 }
