@@ -130,3 +130,6 @@ const arrFiles = (path) => new Promise((resolve, reject) => {
 
 /* exports: para que la función esté disponible para su importación en otro lugar */
 exports.mdLinks = mdLinks;
+
+module.exports = {mdLinks, isAbsolute, isMd, isAnDirectory, extractLinks, linksObject, readFile, resReadFile, readRecursive, arrFiles}
+
