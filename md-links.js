@@ -1,15 +1,12 @@
 const fsp = require('fs').promises;
 const fs = require('fs');
 const Path = require('path');
-const markdownLinkExtractor = require('markdown-link-extractor')
+const markdownLinkExtractor = require('markdown-link-extractor');
+const axios = require("axios");
 
-/* rutas para probar: 
-dir  'C:\Users\asus\Documents\Laboratoria\BOG003-data-lovers\' --Al pasarle esta ruta se queda sin hacer nada
-                                                             pienso que por la cantidad de archivos que encuentra
-dir2    'C:\Users\asus\Documents\Laboratoria\BOG003-data-lovers\node_modules\@eslint'  FUNCIONA
-archivo  'C:\Users\asus\Documents\Laboratoria\BOG003-md-links\readme1.md' FUNCIONA */
+/* 'C:\Users\asus\Documents\Laboratoria\prueba-mdLinks\Dir3' --validate */
 
-/* mdLinks contiene todas las funciones del flujo */
+/* Contiene todas las funciones del flujo */
 const mdLinks = (path, options) => new Promise((resolve, reject) => {
   let arr = [];
   if (path) {
@@ -18,23 +15,52 @@ const mdLinks = (path, options) => new Promise((resolve, reject) => {
       if (res === true) {
         /* Llamar promesa que resuelve el listado de rutas recursivamente */
         arrFiles(path).then((files) => {
-        isValidate(options)
           files.forEach((file) => {
             /* Por cada archivo se resuelve resReadFile que agregan los objetos que con sus propiedades al arreglo arr */
-            arr.push(resReadFile(file).then((object) => object).catch((error) => console.error('error en arry.push', error)))
+            arr.push(resReadFile(file).then((object) => {
+              /* Si la opción es validate por cada object se agregan las propiedades status y ok*/
+              if (validate(options)) {
+                object.map((element) => {
+                  arr.push(httpValidate(element)
+                    .then(newObject => newObject));
+                });
+                /* Cuando se ejecuta lo anterior y se cumple la promesa se retorna el objeto */
+                /* TODAVIA ME RETORNA UN VALOR UNDEFINED AL PRINCIPIO NO SE POR QUE */
+                resolve(Promise.all(arr).then((response) => response).catch((error) => console.error('error en resolve promise', error)))
+              } else {
+                /* Si la opción no incluye nada se resuelve cada objeto con sus propiedades iniciales */
+                resolve(object) 
+              }
+            })
+              .catch((error) => console.error('error en arry.push', error)))
             // PONER ALGUNA CONDICIÓN PARA CUANDO NO ENCUENTRE NINGUN LINK DENTRO DEL README
           })
-          /* Al resolverse todas las promesas anteriores se da resolve a la promesa que retorna objetos(uno por link)  */
-          resolve(Promise.all(arr).then((resolve) => resolve).catch((error) => console.error('error en resolve promise', error)))
+
+          /* Al resolverse todas las promesas anteriores se da resolve a la promesa que retorna objetos(uno por link) */
           
-          
-        }).catch((error) => console.error('error en res read', error))
+          /* if (validate(options)) {
+            response[0].map((element) => {
+             arr.push(httpValidate(element)
+                .then(newObject => newObject));
+            });
+            resolve(Promise.all(arr).then(res => res).catch(error => console.error(error)))
+          } */
+           
+        })
+          .catch((error) => console.error('error en res read', error))
         /* Si es de extensión .md se lee el archivo*/
       } else if (isMd(path)) {
         // ME FALTA HACER ALGO PARA CUANDO NO SEA UN ARCHIVO MD
         /* Resolver promesa de leer archivo para crear el objeto */
-        resReadFile(path).then((object) => {
-          resolve(object)
+        resReadFile(isAbsolute(path)).then((object) => {
+          if (validate(options)) {
+            object.map((element) => {
+              arr.push(httpValidate(element)
+                .then(newObject => newObject));
+            });
+            resolve(Promise.all(arr).then(res => res).catch(error => console.error(error)))
+          }
+          resolve(object);
         }).catch((error) => console.error('error en resReadFile mdlinks', error));
       } else {
         console.error('no hay archivos .md')
@@ -44,6 +70,10 @@ const mdLinks = (path, options) => new Promise((resolve, reject) => {
   } else {
     reject(new Error('Error al retornar promesa'))
   }
+})
+
+const isValidate = (object, options, arr) => new Promise((resolve, reject) => {
+
 })
 
 /* Comprobar si recibe ruta absoluta o relativa */
@@ -99,7 +129,7 @@ const resReadFile = (path) => new Promise((resolve, reject) => {
     else {
       reject(new Error('no hay datos al leer'))
     }
-  }).catch(error => console.log('error al leer archivo ', error))
+  }).catch(error => console.error('error al leer archivo ', error))
 })
 
 /* Función de recursividad para extraer todos los archivos md del directorio */
@@ -128,8 +158,27 @@ const arrFiles = (path) => new Promise((resolve, reject) => {
   }
 });
 
+/* Comprobar si recibe como option --validate */
+const validate = (options) => options === '--validate' ? true : false;
+
+/* Hacer petición HTTP con axios */
+/* Se podría llamar esta funcion en otra parte o sea en md-links y luego si traer lo que retorna aqui */
+const httpValidate = (object) =>
+  axios.get(object.href)
+    .then((response) => {
+      /* Se agregan las propiedades status y ok al objeto */
+      object.status = response.status;
+      object.ok = response.statusText;
+      return object;
+    })
+    .catch(e => {
+      /* Si el valor de e retorna un status de error se asigna este valor a la propiedad status y fail del objeto */
+      if ((e.response !== null) || (400 <= e.response.status <= 599)) {
+        object.status = e.response.status;
+        object.ok = 'fail';
+      }
+      return object;
+    })
+
 /* exports: para que la función esté disponible para su importación en otro lugar */
 exports.mdLinks = mdLinks;
-
-module.exports = {mdLinks, isAbsolute, isMd, isAnDirectory, extractLinks, linksObject, readFile, resReadFile, readRecursive, arrFiles}
-
