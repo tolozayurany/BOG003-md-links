@@ -4,12 +4,8 @@ const Path = require('path');
 const markdownLinkExtractor = require('markdown-link-extractor');
 const axios = require("axios");
 
-/* 'C:\Users\asus\Documents\Laboratoria\prueba-mdLinks\Dir3' --validate 
+/* 'C:\Users\asus\Documents\Laboratoria\prueba-mdLinks\Dir3' --validate */
 
-flatMap: para sacar los arreglos dentro y dejarlos en un solo arreglo
-*/
-
-/* HACER ESTA FUNCIÓN CON THEN ENCADENADOS Y NO ANIDADOS */
 /* Contiene todas las funciones del flujo */
 const mdLinks = (path, options) => new Promise((resolve, reject) => {
   let arr = [];
@@ -26,12 +22,10 @@ const mdLinks = (path, options) => new Promise((resolve, reject) => {
               /* Si la opción es validate por cada object se agregan las propiedades status y ok*/
               if (validate(options)) {
                 object.map((element) => {
-                  
                   newArr.push(httpValidate(element)
                     .then(newObject => newObject));
                 });
                 /* Cuando se ejecuta lo anterior y se cumple la promesa se retorna el objeto */
-                /* TODAVIA ME RETORNA UN VALOR UNDEFINED AL PRINCIPIO NO SE POR QUE */
                 resolve(Promise.all(newArr).then((response) => response))
               } else {
                 /* Si la opción no incluye nada se resuelve cada objeto con sus propiedades iniciales */
@@ -45,6 +39,7 @@ const mdLinks = (path, options) => new Promise((resolve, reject) => {
       } else if (isMd(path)) {
         /* Resolver promesa de leer archivo para crear el objeto */
         resReadFile(isAbsolute(path)).then((object) => {
+          /* Si contiene --validate en las opciones se agregan las propiedades de status y ok */
           if (validate(options)) {
             object.map((element) => {
               arr.push(httpValidate(element)
