@@ -4,11 +4,16 @@ const Path = require('path');
 const markdownLinkExtractor = require('markdown-link-extractor');
 const axios = require("axios");
 
-/* 'C:\Users\asus\Documents\Laboratoria\prueba-mdLinks\Dir3' --validate */
+/* 'C:\Users\asus\Documents\Laboratoria\prueba-mdLinks\Dir3' --validate 
 
+flatMap: para sacar los arreglos dentro y dejarlos en un solo arreglo
+*/
+
+/* HACER ESTA FUNCIÓN CON THEN ENCADENADOS Y NO ANIDADOS */
 /* Contiene todas las funciones del flujo */
 const mdLinks = (path, options) => new Promise((resolve, reject) => {
   let arr = [];
+  let newArr = [];
   if (path) {
     /* 2. Llamar función isAnDirectory() y pasarle como argumento la función isAbsolute */
     isAnDirectory(isAbsolute(path)).then((res) => {
@@ -21,36 +26,23 @@ const mdLinks = (path, options) => new Promise((resolve, reject) => {
               /* Si la opción es validate por cada object se agregan las propiedades status y ok*/
               if (validate(options)) {
                 object.map((element) => {
-                  arr.push(httpValidate(element)
+                  
+                  newArr.push(httpValidate(element)
                     .then(newObject => newObject));
                 });
                 /* Cuando se ejecuta lo anterior y se cumple la promesa se retorna el objeto */
                 /* TODAVIA ME RETORNA UN VALOR UNDEFINED AL PRINCIPIO NO SE POR QUE */
-                resolve(Promise.all(arr).then((response) => response).catch((error) => console.error('error en resolve promise', error)))
+                resolve(Promise.all(newArr).then((response) => response))
               } else {
                 /* Si la opción no incluye nada se resuelve cada objeto con sus propiedades iniciales */
-                resolve(object) 
+                resolve(object)
               }
-            })
-              .catch((error) => console.error('error en arry.push', error)))
-            // PONER ALGUNA CONDICIÓN PARA CUANDO NO ENCUENTRE NINGUN LINK DENTRO DEL README
+            }))
           })
-
-          /* Al resolverse todas las promesas anteriores se da resolve a la promesa que retorna objetos(uno por link) */
-          
-          /* if (validate(options)) {
-            response[0].map((element) => {
-             arr.push(httpValidate(element)
-                .then(newObject => newObject));
-            });
-            resolve(Promise.all(arr).then(res => res).catch(error => console.error(error)))
-          } */
-           
         })
           .catch((error) => console.error('error en res read', error))
         /* Si es de extensión .md se lee el archivo*/
       } else if (isMd(path)) {
-        // ME FALTA HACER ALGO PARA CUANDO NO SEA UN ARCHIVO MD
         /* Resolver promesa de leer archivo para crear el objeto */
         resReadFile(isAbsolute(path)).then((object) => {
           if (validate(options)) {
@@ -58,22 +50,17 @@ const mdLinks = (path, options) => new Promise((resolve, reject) => {
               arr.push(httpValidate(element)
                 .then(newObject => newObject));
             });
-            resolve(Promise.all(arr).then(res => res).catch(error => console.error(error)))
+            resolve(Promise.all(arr).then(res => res))
           }
           resolve(object);
-        }).catch((error) => console.error('error en resReadFile mdlinks', error));
+        })
       } else {
         console.error('no hay archivos .md')
       }
-    }).catch((error) => console.error('error en is a directory', error))
-
+    })
   } else {
     reject(new Error('Error al retornar promesa'))
   }
-})
-
-const isValidate = (object, options, arr) => new Promise((resolve, reject) => {
-
 })
 
 /* Comprobar si recibe ruta absoluta o relativa */
